@@ -17,10 +17,10 @@ def frame_to_image(frame, image_area=None):
 
 def preprocess_images(img):
     return img.convert('L') \
-        .resize((64, 64), resample=Image.BICUBIC)
+        .resize((32, 32), resample=Image.BICUBIC)
 
 
-def are_two_images_different(lhs, rhs, threshold=0.9, print_value=False):
+def are_two_images_different(lhs, rhs, threshold=0.93, print_value=False):
     lhs = preprocess_images(lhs)
     rhs = preprocess_images(rhs)
 
@@ -96,7 +96,21 @@ def slice_video_dbg(file_path, starts_at=0, image_area=None):
     save_image(".", 3, old_image3)
 
 
+def save_frame(file_path, starts_at=0, image_area=None):
+    capture = cv2.VideoCapture(file_path)
+    if not capture.isOpened():
+        raise RuntimeError("Failed to open {}".format(file_path))
+
+    capture.set(cv2.CAP_PROP_POS_FRAMES, starts_at)
+    ret, frame = capture.read()
+    image = frame_to_image(frame, image_area)
+    save_image(".", starts_at, image)
+
+
 if __name__ == "__main__":
-    area = (100, 0, 1800, 960)
-    slice_video("videos/9.11 cd.mp4", starts_at=0, image_area=area)
+    area = (100, 50, 1000, 600)
+    video = 'videos/2021-01-25 15-49-07.mkv'
+    #save_frame(video, starts_at=10000)
+    #save_frame(video, starts_at=10001, image_area=area)
+    slice_video(video, starts_at=0, image_area=None)
     #slice_video_dbg("videos/9.11.mp4", starts_at=(7*60 * 30), image_area=(100,0, 1800, 960))
