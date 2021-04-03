@@ -39,9 +39,58 @@ def make_output_dir(output_path):
     Path(output_path).mkdir(parents=True, exist_ok=True)
 
 
-def save_image(output_path, name, image):
-    print("Saved {}/{}.jpeg".format(output_path, name))
+def save_image(output_path, name, image, msg_prefix=""):
+    if len(str(name)) < 9:
+        name = f"{name:09}"
+    print("{}Saved {}/{}.jpeg".format(msg_prefix, output_path, name))
     image.save("{}/{}.jpeg".format(output_path, name), "JPEG")
+
+
+def load_video(file_path):
+    capture = cv2.VideoCapture(file_path)
+
+    if not capture.isOpened():
+        raise RuntimeError("Failed to open {}".format(file_path))
+
+    return {"frames": capture.get(cv2.CAP_PROP_FRAME_COUNT)}
+
+
+def slice_video_multithreading(file_path, starts_at=0, image_area=None, end_when=None, slicer_id=None):
+    capture = cv2.VideoCapture(file_path)
+
+    if not capture.isOpened():
+        raise RuntimeError("Failed to open {}".format(file_path))
+
+    frames_length = end_when - starts_at
+
+    print("Total frames: {}".format(frames_length))
+    output_path = get_output_path(file_path)
+    make_output_dir(output_path)
+
+    capture.set(cv2.CAP_PROP_POS_FRAMES, starts_at)
+
+    ret, old_frame = capture.read()
+    old_image = frame_to_image(old_frame, image_area)
+    i = starts_at
+    save_image(output_path, i, old_image, msg_prefix=f"[{slicer_id}] ")
+    while ret:
+        i += 1
+        ret, new_frame = capture.read()
+        if not ret:
+            continue
+
+        new_image = frame_to_image(new_frame, image_area)
+        if are_two_images_different(old_image, new_image):
+            save_image(output_path, i, new_image, msg_prefix=f"[{slicer_id}] ")
+            old_image = new_image
+
+        if i % 1000 == 0:
+            print("[{}] Parsed {} frames. It's {}%".format(slicer_id,
+                                                           i - starts_at,
+                                                           (i - starts_at) / frames_length * 100))
+
+        if i >= end_when:
+            break
 
 
 def slice_video(file_path, starts_at=0, image_area=None):
@@ -51,6 +100,7 @@ def slice_video(file_path, starts_at=0, image_area=None):
         raise RuntimeError("Failed to open {}".format(file_path))
 
     frames_length = capture.get(cv2.CAP_PROP_FRAME_COUNT)
+
     print("Total frames: {}".format(frames_length))
     output_path = get_output_path(file_path)
     make_output_dir(output_path)
@@ -72,7 +122,6 @@ def slice_video(file_path, starts_at=0, image_area=None):
             save_image(output_path, i, new_image)
             old_image = new_image
 
-        if i % 1000 == 0:
             print("Parsed {} frames. It's {}%".format(i, i / frames_length * 100))
 
 
@@ -84,7 +133,7 @@ def slice_video_dbg(file_path, starts_at=0, image_area=None):
     ret, old_frame2 = capture.read()
     old_image2 = frame_to_image(old_frame2, image_area)
 
-    capture.set(cv2.CAP_PROP_POS_FRAMES, (8*60 + 3) * 30)
+    capture.set(cv2.CAP_PROP_POS_FRAMES, (8 * 60 + 3) * 30)
     ret, old_frame3 = capture.read()
     old_image3 = frame_to_image(old_frame3, image_area)
     print("1 and 2 - same", are_two_images_different(old_image, old_image2, print_value=True))
@@ -110,7 +159,7 @@ def save_frame(file_path, starts_at=0, image_area=None):
 if __name__ == "__main__":
     area = (100, 50, 1000, 600)
     video = 'videos/2021-01-25 15-49-07.mkv'
-    #save_frame(video, starts_at=10000)
-    #save_frame(video, starts_at=10001, image_area=area)
+    # save_frame(video, starts_at=10000)
+    # save_frame(video, starts_at=10001, image_area=area)
     slice_video(video, starts_at=0, image_area=None)
-    #slice_video_dbg("videos/9.11.mp4", starts_at=(7*60 * 30), image_area=(100,0, 1800, 960))
+    # slice_video_dbg("videos/9.11.mp4", starts_at=(7*60 * 30), image_area=(100,0, 1800, 960))
